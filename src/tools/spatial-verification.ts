@@ -6,7 +6,7 @@
  *
  * IMPORTANT: Distance calculations are evidence for operator review.
  * They are NOT legal determinations of statutory compliance.
- * The Ward 7 200m demonstration is distinct from the 500m liquor-notice reference.
+ * Proximity reference distances are retrieved from the Control Centre per notice type.
  */
 
 import { z } from 'zod';
@@ -32,7 +32,7 @@ export const calculateGeodesicDistanceSchema = z.object({
   fromLabel: z.string().default('Origin').describe('Human label for the origin point.'),
   toLabel: z.string().default('Destination').describe('Human label for the destination point.'),
   proximityThresholdMetres: z.number().positive().optional().describe(
-    'Optional threshold to compare against (e.g. 200 for pilot, 500 for liquor notice). ' +
+    'Optional threshold to compare against (e.g. the notice-type reference distance from the Control Centre). ' +
     'Result will state whether the distance is within the threshold. ' +
     'This is NOT a legal compliance determination.'
   ),
@@ -89,11 +89,11 @@ export const analyseNoticeProximitySchema = z.object({
     '"HOT OSM Education Facilities feature ID xyz", "Sanity geopoint (operator-entered — not authoritative)".'
   ),
   proximityThresholdMetres: z.number().positive().optional().describe(
-    'Threshold to compare against. Use 200 only for the Ward 7 demonstration or 500 only as a liquor-notice reference when applicable. ' +
+    'Threshold to compare against (e.g. the notice-type reference distance from the Control Centre). ' +
     'Omit if no specific threshold applies.'
   ),
   thresholdContext: z.string().optional().describe(
-    'What the threshold represents (for example, "Ward 7 demonstration" or "liquor-notice reference").'
+    'What the threshold represents (e.g. "KZN Liquor Licensing Act s.43(2)(b) reference distance").',
   ),
 });
 
@@ -156,8 +156,8 @@ export async function analyseNoticeProximity(
   lines.push('');
   lines.push(
     'DISCLAIMER: This analysis is for operator reference only. It is not a legal determination ' +
-    'of statutory compliance. The 200m Ward 7 distance is a demonstration proximity, distinct ' +
-    'from a 500m liquor-notice reference. Neither value is a universal buffer or proof of compliance.'
+    'of statutory compliance. Proximity reference distances are not universal buffers. ' +
+    'Do not describe proximity measurements as proof of legal compliance.'
   );
 
   return lines.join('\n');

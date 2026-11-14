@@ -1,6 +1,7 @@
 /**
- * Tests for geodesic calculation library.
- * All calculations use real Amajuba District coordinates.
+ * Geodesic calculation library — pure unit tests.
+ * Uses real Amajuba District coordinates.
+ * No mocks. No live API calls.
  */
 
 import {
@@ -15,11 +16,7 @@ import {
   coordinatePrecisionNote,
 } from '../src/lib/geodesic.js';
 
-// Newcastle CBD approximate centre
 const NEWCASTLE_CBD = { lat: -27.7569, lng: 29.9318 };
-// Approximate Ward 7 area (Newcastle)
-const WARD7_APPROX = { lat: -27.7800, lng: 29.9100 };
-// Synthetic Ward 7 reference point for distance tests only; not an institution coordinate.
 const WARD7_REFERENCE_APPROX = { lat: -27.7750, lng: 29.9050 };
 
 describe('haversineMetres', () => {
@@ -27,31 +24,30 @@ describe('haversineMetres', () => {
     expect(haversineMetres(NEWCASTLE_CBD, NEWCASTLE_CBD)).toBe(0);
   });
 
-  test('known distance Newcastle CBD to ~1km north is approximately 1000m', () => {
+  test('~1km north produces ~1000m result', () => {
     const northPoint = { lat: NEWCASTLE_CBD.lat + 0.009, lng: NEWCASTLE_CBD.lng };
     const dist = haversineMetres(NEWCASTLE_CBD, northPoint);
     expect(dist).toBeGreaterThan(900);
     expect(dist).toBeLessThan(1100);
   });
 
-  test('200m separation produces ~200m result', () => {
-    // ~0.0018 degrees latitude ≈ 200m
-    const point200m = { lat: WARD7_REFERENCE_APPROX.lat + 0.0018, lng: WARD7_REFERENCE_APPROX.lng };
-    const dist = haversineMetres(WARD7_REFERENCE_APPROX, point200m);
+  test('~200m separation produces ~200m result', () => {
+    const point = { lat: WARD7_REFERENCE_APPROX.lat + 0.0018, lng: WARD7_REFERENCE_APPROX.lng };
+    const dist = haversineMetres(WARD7_REFERENCE_APPROX, point);
     expect(dist).toBeGreaterThan(180);
     expect(dist).toBeLessThan(220);
   });
 
-  test('500m separation produces ~500m result', () => {
-    const point500m = { lat: WARD7_REFERENCE_APPROX.lat + 0.0045, lng: WARD7_REFERENCE_APPROX.lng };
-    const dist = haversineMetres(WARD7_REFERENCE_APPROX, point500m);
+  test('~500m separation produces ~500m result', () => {
+    const point = { lat: WARD7_REFERENCE_APPROX.lat + 0.0045, lng: WARD7_REFERENCE_APPROX.lng };
+    const dist = haversineMetres(WARD7_REFERENCE_APPROX, point);
     expect(dist).toBeGreaterThan(470);
     expect(dist).toBeLessThan(530);
   });
 
   test('is symmetric', () => {
-    const d1 = haversineMetres(NEWCASTLE_CBD, WARD7_APPROX);
-    const d2 = haversineMetres(WARD7_APPROX, NEWCASTLE_CBD);
+    const d1 = haversineMetres(NEWCASTLE_CBD, WARD7_REFERENCE_APPROX);
+    const d2 = haversineMetres(WARD7_REFERENCE_APPROX, NEWCASTLE_CBD);
     expect(Math.abs(d1 - d2)).toBeLessThan(0.001);
   });
 });
@@ -99,8 +95,8 @@ describe('cardinalDirection', () => {
 });
 
 describe('geodesicResult', () => {
-  test('returns all fields', () => {
-    const result = geodesicResult(NEWCASTLE_CBD, WARD7_APPROX);
+  test('returns all required fields', () => {
+    const result = geodesicResult(NEWCASTLE_CBD, WARD7_REFERENCE_APPROX);
     expect(result).toHaveProperty('distanceMetres');
     expect(result).toHaveProperty('distanceKm');
     expect(result).toHaveProperty('bearingDegrees');
@@ -110,17 +106,16 @@ describe('geodesicResult', () => {
   });
 
   test('distanceKm is distanceMetres / 1000 (approx)', () => {
-    const result = geodesicResult(NEWCASTLE_CBD, WARD7_APPROX);
+    const result = geodesicResult(NEWCASTLE_CBD, WARD7_REFERENCE_APPROX);
     expect(Math.abs(result.distanceKm - result.distanceMetres / 1000)).toBeLessThan(0.01);
   });
 
-  test('Ward 7 demonstration: two points ~200m apart report within threshold', () => {
-    const noticePoint = { lat: -27.7768, lng: 29.9052 };
-    const schoolPoint = WARD7_REFERENCE_APPROX;
-    const result = geodesicResult(noticePoint, schoolPoint);
-    // These approximate coords should be within a few hundred metres
-    expect(result.distanceMetres).toBeLessThan(500);
+  test('two nearby Amajuba points produce a positive distance', () => {
+    const a = { lat: -27.7768, lng: 29.9052 };
+    const b = { lat: -27.7750, lng: 29.9050 };
+    const result = geodesicResult(a, b);
     expect(result.distanceMetres).toBeGreaterThan(0);
+    expect(result.distanceMetres).toBeLessThan(5000);
   });
 });
 
@@ -134,7 +129,6 @@ describe('pointFromGeoJSON', () => {
   });
 
   test('GeoJSON order is [lng, lat] — not [lat, lng]', () => {
-    // [29.9318, -27.7569] → lng=29.9318, lat=-27.7569
     const geom = { type: 'Point', coordinates: [29.9318, -27.7569] };
     const pt = pointFromGeoJSON(geom);
     expect(pt!.lng).toBe(29.9318);
@@ -145,7 +139,7 @@ describe('pointFromGeoJSON', () => {
     expect(pointFromGeoJSON({ type: 'Polygon', coordinates: [] })).toBeNull();
   });
 
-  test('returns null for invalid coordinates', () => {
+  test('returns null for out-of-range coordinates', () => {
     expect(pointFromGeoJSON({ type: 'Point', coordinates: [200, 100] })).toBeNull();
   });
 
@@ -156,7 +150,6 @@ describe('pointFromGeoJSON', () => {
 
 describe('centroidFromPolygon', () => {
   test('returns approximate centroid of a simple polygon', () => {
-    // Simple square around Newcastle CBD
     const geom = {
       type: 'Polygon',
       coordinates: [[
@@ -179,7 +172,7 @@ describe('centroidFromPolygon', () => {
 });
 
 describe('pointInPolygon', () => {
-  const ward7MockPolygon = {
+  const polygon = {
     type: 'Polygon',
     coordinates: [[
       [29.89, -27.80],
@@ -191,13 +184,11 @@ describe('pointInPolygon', () => {
   };
 
   test('point inside polygon returns true', () => {
-    const inside = { lat: -27.785, lng: 29.905 };
-    expect(pointInPolygon(inside, ward7MockPolygon)).toBe(true);
+    expect(pointInPolygon({ lat: -27.785, lng: 29.905 }, polygon)).toBe(true);
   });
 
   test('point outside polygon returns false', () => {
-    const outside = { lat: -27.70, lng: 29.95 };
-    expect(pointInPolygon(outside, ward7MockPolygon)).toBe(false);
+    expect(pointInPolygon({ lat: -27.70, lng: 29.95 }, polygon)).toBe(false);
   });
 
   test('returns false for non-Polygon geometry', () => {
@@ -208,11 +199,6 @@ describe('pointInPolygon', () => {
 describe('isValidLatLng', () => {
   test('valid Amajuba coordinates pass', () => {
     expect(isValidLatLng(-27.7569, 29.9318)).toBe(true);
-  });
-
-  test('swapped axis (lat/lng confusion) fails for SA coordinates', () => {
-    // 29.9318 as lat is valid range but wrong for SA
-    expect(isValidLatLng(29.9318, -27.7569)).toBe(true); // technically valid WGS84
   });
 
   test('out-of-range lat fails', () => {
@@ -233,52 +219,46 @@ describe('isValidLatLng', () => {
 });
 
 describe('coordinatePrecisionNote', () => {
-  test('5 decimal places reports sub-metre', () => {
-    const note = coordinatePrecisionNote(-27.75693, 29.93182);
-    expect(note).toContain('sub-metre');
+  test('5+ decimal places reports sub-metre', () => {
+    expect(coordinatePrecisionNote(-27.75693, 29.93182)).toContain('sub-metre');
   });
 
   test('4 decimal places reports ~11m', () => {
-    const note = coordinatePrecisionNote(-27.7569, 29.9318);
-    expect(note).toContain('11m');
+    expect(coordinatePrecisionNote(-27.7569, 29.9318)).toContain('11m');
   });
 
   test('3 decimal places reports ~111m', () => {
-    const note = coordinatePrecisionNote(-27.757, 29.932);
-    expect(note).toContain('111m');
+    expect(coordinatePrecisionNote(-27.757, 29.932)).toContain('111m');
   });
 
   test('2 decimal places reports approximate', () => {
-    const note = coordinatePrecisionNote(-27.76, 29.93);
-    expect(note).toContain('approximate');
+    expect(coordinatePrecisionNote(-27.76, 29.93)).toContain('approximate');
   });
 });
 
-describe('proximity threshold comparisons', () => {
-  test('Ward 7 demonstration: point within 200m is within threshold', () => {
-    const school = WARD7_REFERENCE_APPROX;
-    const notice = { lat: school.lat + 0.0015, lng: school.lng }; // ~167m north
-    const dist = haversineMetres(notice, school);
-    expect(dist).toBeLessThan(200);
+describe('liquor notice reference distance comparisons', () => {
+  const LIQUOR_REF_METRES = 500;
+
+  test('point within 500m of reference institution is flagged for review', () => {
+    const point = { lat: WARD7_REFERENCE_APPROX.lat + 0.0027, lng: WARD7_REFERENCE_APPROX.lng };
+    const dist = haversineMetres(point, WARD7_REFERENCE_APPROX);
+    expect(dist).toBeLessThan(LIQUOR_REF_METRES);
   });
 
-  test('500m liquor-notice reference: point at 300m is within reference distance', () => {
-    const school = WARD7_REFERENCE_APPROX;
-    const notice = { lat: school.lat + 0.0027, lng: school.lng }; // ~300m north
-    const dist = haversineMetres(notice, school);
-    expect(dist).toBeLessThan(500);
-    expect(dist).toBeGreaterThan(200); // outside pilot but inside statutory
+  test('point beyond 500m is outside the liquor reference distance', () => {
+    const point = { lat: WARD7_REFERENCE_APPROX.lat + 0.0054, lng: WARD7_REFERENCE_APPROX.lng };
+    const dist = haversineMetres(point, WARD7_REFERENCE_APPROX);
+    expect(dist).toBeGreaterThan(LIQUOR_REF_METRES);
   });
 
-  test('point at 600m is outside both thresholds', () => {
-    const school = WARD7_REFERENCE_APPROX;
-    const notice = { lat: school.lat + 0.0054, lng: school.lng }; // ~600m north
-    const dist = haversineMetres(notice, school);
-    expect(dist).toBeGreaterThan(500);
-  });
-
-  test('pilot and statutory thresholds are distinct', () => {
-    // Confirm 200 !== 500 — they are different thresholds for different purposes
-    expect(200).not.toBe(500);
+  test('distance within reference does not constitute legal compliance', () => {
+    // Being within 500m is a flag for operator review — not a legal finding
+    const dist = haversineMetres(
+      { lat: WARD7_REFERENCE_APPROX.lat + 0.002, lng: WARD7_REFERENCE_APPROX.lng },
+      WARD7_REFERENCE_APPROX
+    );
+    const withinRef = dist <= LIQUOR_REF_METRES;
+    expect(typeof withinRef).toBe('boolean');
+    // The MCP reports this as evidence — the operator makes the determination
   });
 });

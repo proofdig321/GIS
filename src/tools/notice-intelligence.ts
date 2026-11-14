@@ -172,8 +172,8 @@ export const findInstitutionsNearNoticeSchema = z.object({
     'Human name of the dataset (for provenance reporting).'
   ),
   radiusMeters: z.number().positive().max(5000).default(500).describe(
-    'Search radius in metres. Default is a search convenience, not a universal or statutory buffer. ' +
-    'The 200m Ward 7 demonstration is distinct from the 500m liquor-notice reference.'
+    'Search radius in metres. Default 500m is a search convenience, not a universal or statutory buffer. ' +
+    'Use the notice-type reference distance from get_proximity_radius_config as a guide.'
   ),
   nameProperty: z.string().default('name').describe(
     'Property key containing the institution name in the dataset.'
@@ -222,16 +222,6 @@ export async function findInstitutionsNearNotice(
     `Found: ${features.length} institution(s)`,
     '',
   ];
-
-  const isWard7 = notice.relatedArea?.wardNumber === 7 &&
-    municipalityToCatB(notice.relatedArea.municipality ?? '') === 'KZN252';
-  if (input.radiusMeters === 200 && isWard7) {
-    lines.push(
-      'NOTE: 200m is the Ward 7 demonstration distance only. ' +
-      'It is not a universal or statutory buffer and is distinct from any 500m liquor-notice reference.'
-    );
-    lines.push('');
-  }
 
   if (features.length === 0) {
     lines.push(`No institutions found within ${input.radiusMeters}m.`);
@@ -702,9 +692,7 @@ export async function analyseAmajubaSpatialPilot(
       if (!institutionPoint || !pointInAmajuba(institutionPoint, scopeWards)) continue;
       const distance = geodesicResult(noticePoint, institutionPoint);
       lines.push(`  Distance to feature ${feature.id}: ${distance.distanceMetres}m (${distance.distanceKm}km); bearing ${distance.bearingDegrees}° ${distance.cardinalDirection}.`);
-      if (input.wardNumber === 7 && input.municipalityCode === 'KZN252') {
-        lines.push(`  Ward 7 demonstration comparison: ${distance.distanceMetres <= 200 ? 'within' : 'outside'} 200m. Demonstration only; not a statutory buffer or legal determination.`);
-      }
+
       lines.push('  The calculation uses the stored notice coordinate and the retrieved dataset geometry; neither source coordinate is changed.');
     }
   }
@@ -714,7 +702,7 @@ export async function analyseAmajubaSpatialPilot(
     '── Provenance and limitations ──',
     'A feature text match is a discovery candidate, not an identity verification. Use dataset ID plus exact feature ID and review source/custodian metadata; never match or approve from name alone.',
     'Per-layer permission classifications are not exposed by the public map-layers response; exact missing metadata is reported as not provided rather than inferred.',
-    'All proximity measurements are operator evidence only, not a legal or statutory determination. The 200m Ward 7 demonstration and any 500m liquor-notice reference are distinct.'
+    'All proximity measurements are operator evidence only, not a legal or statutory determination. Any notice-type reference distance returned by the Control Centre is not a universal buffer.'
   );
   return lines.join('\n');
 }

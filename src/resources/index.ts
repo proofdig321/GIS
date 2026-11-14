@@ -89,31 +89,24 @@ MDB WardProfile 2021 (e15acecf): pending → redistribute
   {
     uri: 'umkhandlu://spatial/proximity-config',
     name: 'Proximity Radius Configuration',
-    description: 'Control Centre notice-type proximity references and the separate Ward 7 200m demonstration.',
+    description: 'Control Centre notice-type proximity reference values per notice type.',
     mimeType: 'text/plain',
     text: `Umkhandlu Proximity Radius Configuration
 
 Control Centre notice-layers API is the runtime source for notice-type references.
+Values are retrieved per notice type; they are not universal buffers or legal determinations.
 
 ── Notice-type references ──
-Retrieve current notice-type values from the Control Centre at runtime.
-The 500m liquor-notice value is a reference only, where returned; it is not a
-universal exclusion buffer or legal determination.
-
-── Ward 7 test-area demonstration ──
-The 200m proximity may be used for a Ward 7 demonstration. It is:
-  • NOT a statutory radius
-  • DISTINCT from the 500m liquor notice reference distance
-  • A reference to demonstrate the MCP's proximity calculation capability
-
-Never describe the 200m demonstration measurement as proof of legal compliance.
+liquor:  500m — KZN Liquor Licensing Act s.43(2)(b). Reference only; Board retains discretion.
+mining:  500m — MPRDA s.5(4)(c). DMRE practice standard; actual area set by EAP.
+eia/rezoning/infrastructure and others: no fixed radius — assessed case-by-case.
 
 ── Rules ──
 1. Control Centre values are references, not universal buffers or legal determinations.
-2. The Ward 7 200m demonstration is distinct from the 500m liquor-notice reference.
-3. Notice coordinates retain their own provenance.
-4. Do not move a notice to an institution's coordinates.
-5. Do not manufacture a proximity result from an approximate location.
+2. Notice coordinates retain their own provenance.
+3. Do not move a notice to an institution's coordinates.
+4. Do not manufacture a proximity result from an approximate location.
+5. Statutory proximity assessments require professional spatial analysis.
 `,
   },
 

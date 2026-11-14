@@ -146,9 +146,6 @@ export async function getProximityRadiusConfig(
     'IMPORTANT: These are reference distances for operator context only.',
     'They are NOT universal buffers or legal determinations. Statutory compliance requires professional assessment.',
     '',
-    'Ward 7 may be selected as a test area. Its 200m demonstration distance is not a statutory radius',
-    'and is distinct from a 500m liquor-notice reference returned by the Control Centre.',
-    '',
   ];
 
   const types = input.noticeType ? [input.noticeType] : NOTICE_TYPES;

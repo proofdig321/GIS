@@ -131,7 +131,6 @@ server.tool(
 server.tool(
   'get_proximity_radius_config',
   'Retrieve notice-type proximity reference values from the existing Control Centre notice-layers API. ' +
-  'Includes the separate Ward 7 200m demonstration context. ' +
   'Values are not universal buffers or legal determinations.',
   getProximityRadiusConfigSchema.shape,
   async (input) => ({
@@ -219,7 +218,6 @@ server.tool(
   'Analyse the proximity between a development notice site and an institution. ' +
   'Reports geodesic distance, bearing, coordinate precision, provenance flags ' +
   'and threshold comparison. ' +
-  'Distinguishes the Ward 7 200m demonstration from the 500m liquor-notice reference. ' +
   'Result is evidence for operator review — not a legal determination.',
   analyseNoticeProximitySchema.shape,
   async (input) => ({
@@ -337,7 +335,7 @@ server.tool(
   'find_institutions_near_notice',
   'Find institution features from a selected spatial dataset within a radius of a notice site. ' +
   'Returns institutions sorted by distance with feature IDs and coordinates. ' +
-  'A 500m default search radius is not a universal or statutory buffer. The 200m Ward 7 demonstration is distinct from the 500m liquor-notice reference. ' +
+  'A 500m default search radius is a search convenience, not a universal or statutory buffer. ' +
   'Works for any notice and institution dataset in Amajuba District.',
   findInstitutionsNearNoticeSchema.shape,
   async (input) => ({
@@ -351,7 +349,7 @@ server.tool(
   'With a selected dataset, discovers candidate institutional features or retrieves geometry by exact dataset and feature IDs; optionally select a ward such as Ward 7. ' +
   'Analyses Sanity development notices using their stored coordinates and provenance, and resolves administrative context without changing coordinates. ' +
   'Sanity institution geopoints are unverified comparison evidence and never override retrieved dataset geometry; name matches are not identity verification. ' +
-  'The Ward 7 200m distance is a demonstration only and is distinct from any 500m liquor-notice reference; neither is a universal buffer or legal determination.',
+  'Neither the 500m liquor-notice reference nor any other notice-type reference is a universal buffer or legal determination.',
   analyseAmajubaSpatialPilotInputShape,
   async (input) => ({
     content: [{ type: 'text', text: await analyseAmajubaSpatialPilot(input) }],
@@ -462,7 +460,7 @@ Key rules:
 2. Retrieve institutional geometry by dataset ID and exact feature ID. A name match is only a discovery lead.
 3. Authoritative institutional geometry takes precedence over Sanity geopoints; Sanity points are comparison evidence only.
 4. Preserve notice coordinates and provenance; do not move them to institution coordinates.
-5. The 200m Ward 7 distance is a demonstration, distinct from a 500m liquor-notice reference. Neither is a universal buffer or legal determination.
+5. Notice-type reference distances from the Control Centre are not universal buffers or legal determinations.
 6. Never auto-approve uncertain institution-to-feature matches or mutate Sanity.
 
 Start with check_api_health and list_spatial_datasets. For the complete workflow, use analyse_amajuba_spatial_pilot.`,
