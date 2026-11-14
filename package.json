@@ -1,0 +1,26 @@
+{
+  "name": "umkhandlu-gis-mcp",
+  "version": "1.0.0",
+  "description": "Umkhandlu GIS & Spatial Intelligence MCP — authoritative institutional locations, spatial verification, notice proximity analysis and data-catalogue intelligence for the Umkhandlu platform.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "node --watch dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testPathPattern=tests/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@sanity/client": "^6.28.3",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.15.29",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.4",
+    "typescript": "^5.8.3"
+  }
+}

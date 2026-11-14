@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "umkhandlu-gis": {
+      "command": "node",
+      "args": ["/workspaces/GIS/dist/index.js"],
+      "env": {
+        "CONTROL_CENTRE_URL": "https://unami-platform-core-umkhandlu.vercel.app",
+        "SANITY_PROJECT_ID": "60v9eb0r",
+        "SANITY_DATASET": "production",
+        "SANITY_API_VERSION": "2026-01-01"
+      },
+      "description": "Umkhandlu GIS & Spatial Intelligence MCP — authoritative institutional locations, spatial verification, notice proximity analysis and data-catalogue intelligence for the Umkhandlu platform. Pilot area: Amajuba District, KwaZulu-Natal."
+    }
+  }
+}
