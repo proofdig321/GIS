@@ -2,6 +2,12 @@
 
 **Umkhandlu GIS / GratisGIS integration update — 2026-11-15**
 
+## Access recheck — 2026-11-15 04:22 UTC
+
+Re-read the current `/workspaces/GIS/.env.test` by variable name and checked only whether values are set; no values were printed. It contains Sanity read/write tokens and a Supabase service-role key, but **does not contain a GitHub PAT** (no GitHub credential variable), `SUPABASE_ACCESS_TOKEN`, direct database connection string/password, Vercel token, persistent GratisGIS URL/credential, or operator token. The active GitHub CLI identity is `proofdig321`; fresh GitHub API permission checks return `push=false` and `admin=false` for both application repositories. The local app commits therefore remain unpushed.
+
+The Supabase and Vercel CLIs are not installed. No approved SQL execution connection or deployment credential/target is available. The Supabase service-role key is for authorized API operations and is not an SQL migration credential; no attempt was made to execute DDL through an unverified API surface. Migrations 014/015 remain unapplied and no app deployment was triggered. Remote refs were refreshed: Control Centre is 2 commits ahead of `origin/main`, and Governance Node is 3 commits ahead of `origin/trunk` (neither is behind).
+
 ## Current implementation update — 2026-11-15
 
 The full delivery mandate is still **in progress**. This increment adds an operator-only, read-only coverage review on the Control Centre dataset detail page. It discovers an MDB district dataset by source identity, then verifies Amajuba DC25 using both the district-code and district-name properties rather than a hard-coded dataset UUID. It supports Polygon/MultiPolygon point containment, holes and boundary points, retrieves the full bounded inventory in pages, reports operator-status/invalid/non-point counts, and lists up to 100 out-of-polygon staging records for review. It does not clip, delete, relabel, approve, publish, or change permissions. A missing or ambiguous boundary fails closed; an unverified source authority is visibly marked as reference evidence.
