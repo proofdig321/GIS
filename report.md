@@ -47,11 +47,11 @@ Remote refs were fetched before recording this status. Existing work was preserv
 
 | Repository | Branch / HEAD | Upstream divergence | Worktree |
 |---|---|---:|---|
-| GIS MCP (`proofdig321/GIS`) | `main` / `5f6225cc75284c706c87a5e6aecc344e55e15575` | 0 ahead, 0 behind | Local MCP/config/report changes; `.env.test` ignored |
+| GIS MCP (`proofdig321/GIS`) | `main` / `e2605f4f4939d62528ae59940731d9501584662b` | 0 ahead, 0 behind | Changes committed and pushed; `.env.test` ignored |
 | Control Centre (`prooftv/unami-platform-core`) | `main` / `2cad4eca4dac0e913ed91b2fac936f375549ae74` | 1 ahead, 0 behind | Existing local changes plus the coverage-review implementation |
 | Governance Node (`prooftv/Umkhandlu`) | `trunk` / `896ce03fb6815164315c6ea0f877aecc804f1f8e` | 2 ahead, 0 behind | Existing local map-layer changes preserved |
 
-No commits or pushes were created. No production deployment or database migration was run.
+GIS MCP changes were committed and pushed to `proofdig321/GIS` `main` as `e2605f4f4939d62528ae59940731d9501584662b`. No application-repository commit or push was made. No production deployment or database migration was run.
 
 ## `.env.test` handling
 
@@ -126,9 +126,8 @@ GIS MCP changes:
 - `tests/mcp-config-security.test.ts` — ensure credential-bearing environment-variable names are not embedded in tracked MCP config.
 - `report.md` — this report.
 
-Current application worktree files (all uncommitted; none were pushed):
+Current application-repository worktree files (uncommitted; none were pushed):
 
-- GIS MCP: `.env.example`, `README.md`, `mcp.json`, `tests/mcp-config-security.test.ts`.
 - Control Centre:
   - `.env.example`
   - `apps/umkhandlu/package.json`
@@ -168,7 +167,7 @@ The Control Centre coverage-review files above were added in this continuation; 
 - Control Centre: coverage review **5 tests**, GratisGIS client **2 tests**, permissions **30 tests**, and spatial API **9 tests** passed. Production Next build passed with the allowlisted test environment; it emitted a workspace-root warning because multiple lockfiles were detected. Direct `tsc --noEmit` still encounters the existing duplicate global `test`/`expect` declarations in `permission-enforcement.test.ts`.
 - Governance Node: `npm run typecheck`, all **35 tests**, and the production build passed with allowlisted test variables.
 - `git diff --check` passed in all three repositories. `.env.test` ignore status was verified.
-- Read-only `.env.test` database inspection confirmed the 834 staged rows, permission classifications, missing license/provenance and unknown authority fields, plus anonymous table denial. No production migration, deployment, data write, publication, commit, or push was performed.
+- Read-only `.env.test` database inspection confirmed the 834 staged rows, permission classifications, missing license/provenance and unknown authority fields, plus anonymous table denial. No production migration, deployment, data write, or publication was performed.
 
 ## Remaining blockers
 
@@ -178,4 +177,4 @@ The Control Centre coverage-review files above were added in this continuation; 
 4. The live Governance Node spatial API is missing coordinate provenance and administrative-area data returned by current local source. Governance Node build now passes locally, but deployed API behavior remains unverified.
 5. The Giga collection’s Amajuba label conflicts with its geometry coverage (642 features outside the district). An operator must verify the source export and decide the approved correction before publishing it as an Amajuba-only dataset.
 6. Credential rotation for the previously committed credentials remains an owner action. Credential values are not in the current `mcp.json` or this report; historical Git revisions still contain them and were not rewritten.
-7. Existing local changes remain uncommitted; application branches remain ahead of their fetched upstreams by one Control Centre commit and two Governance Node commits. GitHub identity `proofdig321` has only `READ` permission on both application repositories, so no application push was attempted. Use an authorized maintainer account or grant the required repository write permission, then submit the preserved commits and worktree changes without rewriting history.
+7. Control Centre and Governance Node worktree changes remain uncommitted; their branches are ahead of fetched upstream by one Control Centre commit and two Governance Node commits. GitHub identity `proofdig321` has only `READ` permission on both application repositories, so no application push was attempted. Use an authorized maintainer account or grant the required repository write permission, then submit the preserved commits and worktree changes without rewriting history. The separate GIS MCP changes are committed and pushed at `e2605f4f4939d62528ae59940731d9501584662b`.
