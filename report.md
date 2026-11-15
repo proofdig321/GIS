@@ -2,7 +2,7 @@
 
 **Umkhandlu GIS / GratisGIS integration update — 2026-11-15**
 
-## Access and delivery update — 2026-11-15 04:35 UTC
+## Access, migration, and deployment update — 2026-11-15 04:45 UTC
 
 The user clarified that a GitHub PAT was included as a note in `/workspaces/GIS/env.md`, not as an environment assignment. The PAT was read in memory only, never printed, and used for authenticated permission checks and pushes. GitHub identified its owner as `prooftv`, with `push=true` and `admin=true` on both original application repositories.
 
@@ -11,9 +11,15 @@ Successfully pushed the existing application commits without force-pushing:
 - Control Centre `prooftv/unami-platform-core` `main`: `f2e26bac2a732ed55a77d570fdef494ba46a4dbf`.
 - Governance Node `prooftv/Umkhandlu` `trunk`: `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d`.
 
-Both branches are now equal to their fetched `origin` branches and both app worktrees are clean. The pushes triggered Vercel checks on four Control Centre projects and two Governance Node projects; all six remained **pending** at the last check. This confirms deployment checks were triggered, not that any deployment completed or passed. The Control Centre also has a successful `Supabase Preview` check, which is not evidence that migrations 014/015 were applied to the configured project.
+Both branches are now equal to their fetched `origin` branches and both app worktrees are clean. All four Control Centre Vercel checks completed successfully. Both Governance Node Vercel checks failed; GitHub’s status response points to `vercel inspect ... --logs` for details, but no Vercel token is available to retrieve the deployment logs. Public health checks still returned HTTP 200: 55 Control Centre wards and Governance Node `healthy`. These check results do not prove the new Governance Node commit was deployed.
 
-The supplied notes have a Supabase service-role key, but no `SUPABASE_ACCESS_TOKEN`, database URL/password, or Vercel token. Neither Supabase nor Vercel CLI is installed. A read-only schema probe to the configured Supabase project still returns SQLSTATE `42703` for `source_feature_id`; therefore migration 015 is not present there. Migration 014's effects also have not been independently verified. No SQL DDL was run through an unverified API, and no deployment completion was claimed.
+The Supabase PAT was embedded in a note and was used through the official Supabase CLI (via `npx`) against project `Umkhandlu` / `ufsmpqxniswdnsywjzje`, which the CLI identified as **production**. Migrations 014 and 015 were applied individually and their migration versions recorded as applied. Read-only post-checks confirmed: anonymous and authenticated `SELECT` are denied on `spatial_staged_features`; the service role retains `SELECT`; the authenticated policy is gone; `source_feature_id` and its partial unique index exist; and `gratisgis-fetch` is allowed by the pipeline constraint.
+
+The legacy migration history remains inconsistent: remote history contains versions 000, 001, 002, 014, and 015; local versions 003–013 are not recorded remotely (although their target tables/policies exist), and `db push --dry-run` reports remote version 000 is missing from the local migration directory. I did not replay the broad `APPLY_IN_SQL_EDITOR.sql` bundle: it includes legacy DDL and data updates, while several target tables/policies already exist and its policy creation is not idempotent.
+
+After the successful Control Centre release, the public Giga feature endpoint returned HTTP 200, reported inventory total 834, and included attribution and the `sourceFeatureId` response field. The sampled existing feature's source ID is `null`; migration 015 added the storage column but did not backfill upstream IDs. No feature data was changed.
+
+Governance Node Vercel deployments `umkhandlu-dlamini` (`dpl_FYo4hAspL27RHCKMDMwENkikESrQ`) and `umkhandlu` (`dpl_DgvoxPWwaMKustCdoHheiCumf7HM`) failed. The Vercel status check points to `vercel inspect <deployment> --logs`; that requires Vercel authentication not present in the notes. The public Governance Node health endpoint returned healthy, but that does not verify the failed commit was deployed.
 
 ## Current implementation update — 2026-11-15
 
@@ -24,8 +30,8 @@ The supplied test configuration was used for **read-only** database verification
 - Giga dataset `b02a30ea-d240-4834-95e4-fa7a3a95c063` is active and published; its database feature count and stored rows are both **834**, all currently `approved`.
 - Both dataset- and source-level permission classifications are `redistribute`. However, the source authority status is `unknown`; dataset/source licence-term fields and dataset provenance are not recorded. Redistribution classification is not treated as a substitute for missing licence evidence.
 - The matched MDB 2026 Amajuba boundary has the expected DC25/name identity, but the boundary source authority status is also `unknown`, and licence terms are not recorded. The operator report therefore presents the 192/642 point-in-polygon comparison as **unverified geometric evidence**, not authoritative coverage.
-- Selecting `source_feature_id` from the staged table returns SQLSTATE `42703`; the upstream identity migration/schema is not present in this database.
-- An anonymous REST read of `spatial_staged_features` is denied (HTTP 401 / SQLSTATE `42501`). This verifies anonymous table denial only; authenticated non-operator access and all deployed RLS/grants remain unverified.
+- Migrations 014/015 were applied to the configured production Supabase project on 2026-11-15. Post-apply catalog checks confirmed staged-feature `SELECT` is false for `anon` and `authenticated`, true for `service_role`, the old authenticated read policy is absent, `source_feature_id` is present, its partial unique index is present, and GratisGIS is accepted by the pipeline type constraint.
+- The previous anonymous REST request was denied. Authenticated direct table access is now denied by explicit privilege and policy verification. Other deployed RLS/grants were not exhaustively audited.
 
 ### Increment files
 
@@ -44,7 +50,7 @@ The supplied test configuration was used for **read-only** database verification
 
 ### Delivery access and remaining barriers
 
-The GIS MCP changes remain pushed to `proofdig321/GIS`. App pushes succeeded using the PAT noted in `env.md`; Vercel checks were pending and database migrations remain unverified/unapplied. There is still no configured persistent GratisGIS endpoint/credential or `UMKHANDLU_OPERATOR_TOKEN`, and no operator session was available to exercise the UI.
+The GIS MCP and both application branches are pushed. Control Centre Vercel deployments completed successfully; Governance Node deployments failed. Migrations 014/015 are applied and verified. There is still no configured persistent GratisGIS endpoint/credential or `UMKHANDLU_OPERATOR_TOKEN`, and no operator session was available to exercise the UI.
 
 ## Executive summary
 
@@ -52,7 +58,7 @@ Continued from the existing three-repository work without resetting or replacing
 
 The live checks establish that the Giga/UNICEF/ITU catalogue entry reports 834 features and that all 834 can be paginated from the public Control Centre feature API. Against the published Municipal Demarcation Board (MDB) Amajuba DC25 polygon and the union of its 55 published 2026 wards, 192 school points are inside and 642 are outside. The previously reported 106 candidates are reproduced by searching the in-district features’ `name` for `primary`; this is a text-search result, not the dataset inventory or verified school identity.
 
-Important deployment gaps remain: the live feature API omits source-feature IDs and detailed permission/licence/provenance metadata present in the current local Control Centre source; the live Governance Node spatial response omits coordinate-provenance fields present in its local source; and no adopted persistent GratisGIS URL or auth contract is configured. No production data, permissions, migrations, Sanity records, or deployments were changed.
+Important integration gaps remain: the live feature API now includes `sourceFeatureId` but existing records return it as null, and detailed permission/licence/provenance metadata is still missing; the live Governance Node spatial response omits coordinate-provenance fields present in its local source; and no adopted persistent GratisGIS URL or auth contract is configured. No source/dataset records or Sanity records were changed. Production database permissions/schema were changed only by the explicitly requested migrations 014/015.
 
 ## Repository state
 
@@ -60,19 +66,18 @@ Remote refs were fetched before recording this status. Existing work was preserv
 
 | Repository | Branch / relevant commit | Upstream divergence | Worktree |
 |---|---|---:|---|
-| GIS MCP (`proofdig321/GIS`) | `main` / implementation `e2605f4f4939d62528ae59940731d9501584662b` | 0 ahead, 0 behind | Changes committed and pushed; `.env.test` ignored |
+| GIS MCP (`proofdig321/GIS`) | `main` / latest report commit (see this report commit) | 0 ahead, 0 behind | Changes pushed; `env.md` untracked |
 | Control Centre (`prooftv/unami-platform-core`) | `main` / `f2e26bac2a732ed55a77d570fdef494ba46a4dbf` | 0 ahead, 0 behind | Pushed; clean |
 | Governance Node (`prooftv/Umkhandlu`) | `trunk` / `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d` | 0 ahead, 0 behind | Pushed; clean |
 
-GIS MCP changes were committed and pushed to `proofdig321/GIS` `main` as `e2605f4f4939d62528ae59940731d9501584662b`, with report updates `87d9ff6a8469a0b877326990412b03d48910b585`, `4de6986f8acc1c007a31ff36b5118d2a92c6f617`, and the current report commit. The application commits listed above are now pushed to their requested original remotes. Vercel checks were triggered but remain pending; migration 015 is confirmed absent from the queried Supabase schema. No completed production deployment or database migration is claimed.
+GIS MCP code changes are committed and pushed at `e2605f4f4939d62528ae59940731d9501584662b`; subsequent report commits are recorded on `main`. The application commits listed above are pushed to their original remotes. Control Centre Vercel checks succeeded; both Governance Node Vercel checks failed. Production Supabase migrations 014/015 were applied and verified.
 
-## `.env.test` handling
+## Credential notes and environment handling
 
-- `/workspaces/GIS/.env.test` is present, untracked, and now explicitly ignored by the GIS MCP repository’s `.gitignore`. `git check-ignore` confirms it is ignored.
-- Its values were not printed, copied, committed, or written into reports. Read-only MCP checks used an allowlist of required values; the MCP child process was not given the Sanity write token, Supabase service-role key, an operator token, or any GratisGIS credential.
+- The supplied notes file is now `/workspaces/GIS/env.md`; it is ignored by the GIS MCP `.gitignore` and was not committed. Credential values were not printed or written to the report. The GitHub and Supabase PATs were read in memory and used only with their respective services; the Supabase service-role key was used only for the earlier read-only REST probe.
 - The Control Centre build received only the Supabase variables it needs from the supplied test environment. Build output was checked for and scrubbed of those exact values before display.
 - The root `.env.test` is not automatically loaded from the nested application repository directories. No blanket loader or cross-repository secret copy was added. The GIS MCP loads `.env` or host-injected variables, not `.env.test`.
-- Missing from the supplied notes are `GRATISGIS_OGC_API_URL`, any verified GratisGIS credential, `UMKHANDLU_OPERATOR_TOKEN`, `SUPABASE_ACCESS_TOKEN`, a database URL/password, and `VERCEL_TOKEN`. They do include a Supabase service-role key and a Sanity write token; the Supabase key was used only for the read-only schema probe. The MCP’s `SANITY_READ_TOKEN` name also differs from the Governance Node’s `SANITY_API_READ_TOKEN`; the latter was mapped only in the isolated read-only check.
+- Missing from the supplied notes are `GRATISGIS_OGC_API_URL`, any verified GratisGIS credential, `UMKHANDLU_OPERATOR_TOKEN`, a database URL/password, and `VERCEL_TOKEN`. The Supabase PAT was supplied as a note and used by the CLI. The notes also include a Supabase service-role key and Sanity write token; neither was used to perform writes. The MCP’s `SANITY_READ_TOKEN` name also differs from the Governance Node’s `SANITY_API_READ_TOKEN`; the latter was mapped only in the isolated read-only check.
 
 ## Live integration verification
 
@@ -121,7 +126,7 @@ The MCP listed 16 public layers. The response includes layers only after the pub
 - The MCP district query returned 214 unique points in the bounding extent; exact ward-polygon containment reduced that to 192. Searching those in-district names for the substring `primary` returned **106 candidates**. Thus 106 is a filtered name-search count, not the total inventory; name matching is discovery only.
 - The public attribution string says “Giga (UNICEF/ITU) — CC-BY 4.0. School connectivity data.” The live feature response did not supply independent dataset/source licence terms or provenance, so the attribution string is not treated as a substitute for those records.
 - **Scope/data-quality risk:** although named “Amajuba DC25,” 642 of the 834 geometries are outside Amajuba. Do not treat all 834 as an Amajuba-only inventory or use the label as proof of coverage. An operator must investigate the source clipping/registration and correct it through the approved workflow; no dataset or production permission was changed.
-- The deployed feature response returns dataset/source IDs, attribution, dataset vintage and publication timestamp, but omits `sourceFeatureId`, `datasetPermission`, `sourcePermission`, licence terms, and dataset provenance. Consequently, the current live endpoint demonstrates that the dataset is publicly retrievable through its checks, but does **not** expose enough evidence to independently confirm the exact source and dataset classifications or reconcile upstream feature IDs.
+- At the initial live check, the deployed feature response returned dataset/source IDs, attribution, dataset vintage and publication timestamp, but omitted `sourceFeatureId`, `datasetPermission`, `sourcePermission`, licence terms, and dataset provenance. After the later Control Centre deployment it includes the `sourceFeatureId` field, but sampled existing records contain `null`; permission classifications, licence terms, and provenance remain absent from the response.
 
 ### Notice radius
 
@@ -131,7 +136,7 @@ The Control Centre-backed MCP lookup returned a **500 m liquor-notice reference*
 
 GIS MCP changes:
 
-- `.gitignore` — explicitly ignore the supplied root `.env.test`.
+- `.gitignore` — ignore the supplied root `.env.test` and, after it was renamed, `/env.md`.
 - `src/lib/cc-client.ts` — type optional source/dataset permission, licensing, provenance and source-vintage metadata; preserve upstream `sourceFeatureId` when returned.
 - `src/tools/feature-search.ts` — include source feature IDs and report permission/licence/provenance fields when present, distinguishing “not provided” from “not returned.”
 - `src/tools/notice-intelligence.ts` — report total dataset inventory, bounding-extent retrieval, administrative-boundary inclusion, and text-match counts separately; correct pagination completion handling across pages/tiles; retain source feature IDs and report optional metadata without inferring absent values.
@@ -139,7 +144,7 @@ GIS MCP changes:
 - `tests/mcp-config-security.test.ts` — ensure credential-bearing environment-variable names are not embedded in tracked MCP config.
 - `report.md` — this report.
 
-Current application-repository worktree files (uncommitted; none were pushed):
+Application-repository files included in the pushed commits:
 
 - Control Centre:
   - `.env.example`
@@ -172,7 +177,7 @@ Current application-repository worktree files (uncommitted; none were pushed):
   - `apps/umkhandlu/supabase/migrations/APPLY_IN_SQL_EDITOR.sql`
 - Governance Node: `src/lib/spatial/map-layers.ts`, `src/lib/spatial/map-layers.test.ts`.
 
-The Control Centre coverage-review files above were added in this continuation; the other listed Control Centre and Governance Node worktree changes were preserved. No direct production Sanity or Supabase data changes were made. Application pushes did trigger external Vercel checks; deployment status is pending.
+The Control Centre coverage-review files above were added in this continuation; the other listed Control Centre and Governance Node worktree changes were preserved. No production Sanity or source/dataset record changes were made. The explicitly requested 014/015 database migrations were applied; app deployment checks completed with Control Centre success and Governance Node failure.
 
 ## Validation
 
@@ -180,16 +185,16 @@ The Control Centre coverage-review files above were added in this continuation; 
 - Control Centre: coverage review **5 tests**, GratisGIS client **2 tests**, permissions **30 tests**, and spatial API **9 tests** passed. Production Next build passed with the allowlisted test environment; it emitted a workspace-root warning because multiple lockfiles were detected. Direct `tsc --noEmit` still encounters the existing duplicate global `test`/`expect` declarations in `permission-enforcement.test.ts`.
 - Governance Node: `npm run typecheck` and all **35 tests** passed. The configured `vercel-build` task was rerun and Next.js exited with `SIGTERM`; a prior build run had passed, so build success is not reproducible in the latest attempt.
 - `git diff --check` passed in all three repositories. `.env.test` ignore status was verified.
-- Read-only `.env.test` database inspection confirmed the 834 staged rows, permission classifications, missing license/provenance and unknown authority fields, anonymous table denial, and absence of `source_feature_id`. No database migration, data write, or publication was performed. Vercel checks triggered by the app pushes were still pending.
+- Read-only `.env.test` database inspection confirmed the 834 staged rows, permission classifications, missing license/provenance and unknown authority fields, and anonymous table denial. The later production migrations added `source_feature_id` and removed authenticated staged-table reads. No feature/source/dataset records were changed or published.
 
 ## Remaining blockers
 
-1. No adopted persistent GratisGIS endpoint or authentication contract is available in `.env.test` or verified in the environment. The public demo was not treated as Umkhandlu’s deployment.
+1. No adopted persistent GratisGIS endpoint or authentication contract is available in `env.md` or verified in the environment. The public demo was not treated as Umkhandlu’s deployment.
 2. The GIS MCP operator token is absent, so the operator-only integrity report and exact protected source/dataset permission records could not be checked.
-3. The live Control Centre feature API is behind the current local contract for upstream feature IDs and detailed permission/licence/provenance fields. Test-database evidence shows `source_feature_id` is absent (SQLSTATE `42703`), consistent with migration 015 not being reflected there. Authenticated non-operator access and deployed grants/RLS remain unverified. No migration was applied.
-4. The live Governance Node spatial API is missing coordinate provenance and administrative-area data returned by current local source. Governance Node build now passes locally, but deployed API behavior remains unverified.
+3. Migration history is inconsistent: remote history contains 000–002 and 014–015, while local 003–013 are not recorded remotely; remote schema objects exist, suggesting earlier manual application. Standard `db push --dry-run` fails because remote version 000 has no matching local migration file. The broad legacy bundle was not replayed because it contains non-idempotent policies and data updates.
+4. Both new Governance Node Vercel deployments failed. The public health endpoint still returns healthy, but does not prove the new commit is live. Vercel deployment logs require Vercel CLI authentication, which is not configured in `env.md`.
 5. The Giga collection’s Amajuba label conflicts with its geometry coverage (642 features outside the district). An operator must verify the source export and decide the approved correction before publishing it as an Amajuba-only dataset.
 6. Credential rotation for the previously committed credentials remains an owner action. Credential values are not in the current `mcp.json` or this report; historical Git revisions still contain them and were not rewritten.
-7. The application commits have been pushed and the GitHub branches are synchronized. Six Vercel status contexts were pending at the last check. Verify their final status and live application behavior before claiming deployment complete.
-8. The supplied notes have no Supabase CLI, project-management access token, or direct database connection string. The service-role key cannot safely apply arbitrary DDL through the REST API. Migrations 014/015 are in the pushed Control Centre commit but remain unapplied/unverified; the configured database schema probe confirms `source_feature_id` is absent.
-9. No Vercel token is configured. Git pushes triggered Vercel checks on the linked projects, but checks remain pending and deployment outcome is not yet verified.
+7. The application commits have been pushed and the GitHub branches are synchronized. All four Control Centre deployments succeeded; both Governance Node deployments failed. Inspect/fix those deployments with Vercel access and rerun checks.
+8. Migrations 014/015 were applied to the production Supabase project and verified; migration history was repaired for those two versions. The remaining 003–013 history discrepancy and missing local 000 file still prevent normal `db push` workflow.
+9. No Vercel token is configured, so deployment failure logs and reruns cannot be operated through Vercel CLI from this workspace.
