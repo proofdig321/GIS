@@ -2,11 +2,18 @@
 
 **Umkhandlu GIS / GratisGIS integration update — 2026-11-15**
 
-## Access recheck — 2026-11-15 04:22 UTC
+## Access and delivery update — 2026-11-15 04:35 UTC
 
-Re-read the current `/workspaces/GIS/.env.test` by variable name and checked only whether values are set; no values were printed. It contains Sanity read/write tokens and a Supabase service-role key, but **does not contain a GitHub PAT** (no GitHub credential variable), `SUPABASE_ACCESS_TOKEN`, direct database connection string/password, Vercel token, persistent GratisGIS URL/credential, or operator token. The active GitHub CLI identity is `proofdig321`; fresh GitHub API permission checks return `push=false` and `admin=false` for both application repositories. The local app commits therefore remain unpushed.
+The user clarified that a GitHub PAT was included as a note in `/workspaces/GIS/env.md`, not as an environment assignment. The PAT was read in memory only, never printed, and used for authenticated permission checks and pushes. GitHub identified its owner as `prooftv`, with `push=true` and `admin=true` on both original application repositories.
 
-The Supabase and Vercel CLIs are not installed. No approved SQL execution connection or deployment credential/target is available. The Supabase service-role key is for authorized API operations and is not an SQL migration credential; no attempt was made to execute DDL through an unverified API surface. Migrations 014/015 remain unapplied and no app deployment was triggered. Remote refs were refreshed: Control Centre is 2 commits ahead of `origin/main`, and Governance Node is 3 commits ahead of `origin/trunk` (neither is behind).
+Successfully pushed the existing application commits without force-pushing:
+
+- Control Centre `prooftv/unami-platform-core` `main`: `f2e26bac2a732ed55a77d570fdef494ba46a4dbf`.
+- Governance Node `prooftv/Umkhandlu` `trunk`: `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d`.
+
+Both branches are now equal to their fetched `origin` branches and both app worktrees are clean. The pushes triggered Vercel checks on four Control Centre projects and two Governance Node projects; all six remained **pending** at the last check. This confirms deployment checks were triggered, not that any deployment completed or passed. The Control Centre also has a successful `Supabase Preview` check, which is not evidence that migrations 014/015 were applied to the configured project.
+
+The supplied notes have a Supabase service-role key, but no `SUPABASE_ACCESS_TOKEN`, database URL/password, or Vercel token. Neither Supabase nor Vercel CLI is installed. A read-only schema probe to the configured Supabase project still returns SQLSTATE `42703` for `source_feature_id`; therefore migration 015 is not present there. Migration 014's effects also have not been independently verified. No SQL DDL was run through an unverified API, and no deployment completion was claimed.
 
 ## Current implementation update — 2026-11-15
 
@@ -37,7 +44,7 @@ The supplied test configuration was used for **read-only** database verification
 
 ### Delivery access and remaining barriers
 
-GitHub identity is `proofdig321`; repository permission is `ADMIN` for `proofdig321/GIS` but `push:false` for both application repositories. New application work was committed locally to preserve it, but no app push was attempted. The current `.env.test` has no `SUPABASE_ACCESS_TOKEN`, direct database URL/password, `VERCEL_TOKEN`, `GRATISGIS_OGC_API_URL`, GratisGIS credential, or `UMKHANDLU_OPERATOR_TOKEN`; Supabase and Vercel CLIs are also unavailable. A Supabase service-role key does not provide a verified SQL migration or deployment route. No operator session was available to exercise the UI. No migration or deployment was performed. See **Remaining blockers** below.
+The GIS MCP changes remain pushed to `proofdig321/GIS`. App pushes succeeded using the PAT noted in `env.md`; Vercel checks were pending and database migrations remain unverified/unapplied. There is still no configured persistent GratisGIS endpoint/credential or `UMKHANDLU_OPERATOR_TOKEN`, and no operator session was available to exercise the UI.
 
 ## Executive summary
 
@@ -54,10 +61,10 @@ Remote refs were fetched before recording this status. Existing work was preserv
 | Repository | Branch / relevant commit | Upstream divergence | Worktree |
 |---|---|---:|---|
 | GIS MCP (`proofdig321/GIS`) | `main` / implementation `e2605f4f4939d62528ae59940731d9501584662b` | 0 ahead, 0 behind | Changes committed and pushed; `.env.test` ignored |
-| Control Centre (`prooftv/unami-platform-core`) | `main` / `f2e26bac2a732ed55a77d570fdef494ba46a4dbf` | 2 ahead, 0 behind | Local changes committed; not pushed |
-| Governance Node (`prooftv/Umkhandlu`) | `trunk` / `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d` | 3 ahead, 0 behind | Local changes committed; not pushed |
+| Control Centre (`prooftv/unami-platform-core`) | `main` / `f2e26bac2a732ed55a77d570fdef494ba46a4dbf` | 0 ahead, 0 behind | Pushed; clean |
+| Governance Node (`prooftv/Umkhandlu`) | `trunk` / `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d` | 0 ahead, 0 behind | Pushed; clean |
 
-GIS MCP changes were committed and pushed to `proofdig321/GIS` `main` as `e2605f4f4939d62528ae59940731d9501584662b`, with the report update at `87d9ff6a8469a0b877326990412b03d48910b585`. Application changes are preserved in local commits `prooftv/unami-platform-core` `f2e26bac2a732ed55a77d570fdef494ba46a4dbf` and `prooftv/Umkhandlu` `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d`; they were not pushed because GitHub reports `push:false`. No production deployment or database migration was run.
+GIS MCP changes were committed and pushed to `proofdig321/GIS` `main` as `e2605f4f4939d62528ae59940731d9501584662b`, with report updates `87d9ff6a8469a0b877326990412b03d48910b585`, `4de6986f8acc1c007a31ff36b5118d2a92c6f617`, and the current report commit. The application commits listed above are now pushed to their requested original remotes. Vercel checks were triggered but remain pending; migration 015 is confirmed absent from the queried Supabase schema. No completed production deployment or database migration is claimed.
 
 ## `.env.test` handling
 
@@ -65,7 +72,7 @@ GIS MCP changes were committed and pushed to `proofdig321/GIS` `main` as `e2605f
 - Its values were not printed, copied, committed, or written into reports. Read-only MCP checks used an allowlist of required values; the MCP child process was not given the Sanity write token, Supabase service-role key, an operator token, or any GratisGIS credential.
 - The Control Centre build received only the Supabase variables it needs from the supplied test environment. Build output was checked for and scrubbed of those exact values before display.
 - The root `.env.test` is not automatically loaded from the nested application repository directories. No blanket loader or cross-repository secret copy was added. The GIS MCP loads `.env` or host-injected variables, not `.env.test`.
-- Missing from the supplied file are `GRATISGIS_OGC_API_URL`, any verified GratisGIS credential, `UMKHANDLU_OPERATOR_TOKEN`, `SUPABASE_ACCESS_TOKEN`, a database URL/password, and `VERCEL_TOKEN`. The file does include a Supabase service-role key and a Sanity write token; neither was used for migration, deployment, or write operations. The MCP’s `SANITY_READ_TOKEN` name also differs from the Governance Node’s `SANITY_API_READ_TOKEN`; the latter was mapped only in the isolated read-only check.
+- Missing from the supplied notes are `GRATISGIS_OGC_API_URL`, any verified GratisGIS credential, `UMKHANDLU_OPERATOR_TOKEN`, `SUPABASE_ACCESS_TOKEN`, a database URL/password, and `VERCEL_TOKEN`. They do include a Supabase service-role key and a Sanity write token; the Supabase key was used only for the read-only schema probe. The MCP’s `SANITY_READ_TOKEN` name also differs from the Governance Node’s `SANITY_API_READ_TOKEN`; the latter was mapped only in the isolated read-only check.
 
 ## Live integration verification
 
@@ -165,7 +172,7 @@ Current application-repository worktree files (uncommitted; none were pushed):
   - `apps/umkhandlu/supabase/migrations/APPLY_IN_SQL_EDITOR.sql`
 - Governance Node: `src/lib/spatial/map-layers.ts`, `src/lib/spatial/map-layers.test.ts`.
 
-The Control Centre coverage-review files above were added in this continuation; the other listed Control Centre and Governance Node worktree changes were preserved. No changes were made to production Sanity, Supabase, GratisGIS, or deployment state.
+The Control Centre coverage-review files above were added in this continuation; the other listed Control Centre and Governance Node worktree changes were preserved. No direct production Sanity or Supabase data changes were made. Application pushes did trigger external Vercel checks; deployment status is pending.
 
 ## Validation
 
@@ -173,7 +180,7 @@ The Control Centre coverage-review files above were added in this continuation; 
 - Control Centre: coverage review **5 tests**, GratisGIS client **2 tests**, permissions **30 tests**, and spatial API **9 tests** passed. Production Next build passed with the allowlisted test environment; it emitted a workspace-root warning because multiple lockfiles were detected. Direct `tsc --noEmit` still encounters the existing duplicate global `test`/`expect` declarations in `permission-enforcement.test.ts`.
 - Governance Node: `npm run typecheck` and all **35 tests** passed. The configured `vercel-build` task was rerun and Next.js exited with `SIGTERM`; a prior build run had passed, so build success is not reproducible in the latest attempt.
 - `git diff --check` passed in all three repositories. `.env.test` ignore status was verified.
-- Read-only `.env.test` database inspection confirmed the 834 staged rows, permission classifications, missing license/provenance and unknown authority fields, plus anonymous table denial. No production migration, deployment, data write, or publication was performed.
+- Read-only `.env.test` database inspection confirmed the 834 staged rows, permission classifications, missing license/provenance and unknown authority fields, anonymous table denial, and absence of `source_feature_id`. No database migration, data write, or publication was performed. Vercel checks triggered by the app pushes were still pending.
 
 ## Remaining blockers
 
@@ -183,6 +190,6 @@ The Control Centre coverage-review files above were added in this continuation; 
 4. The live Governance Node spatial API is missing coordinate provenance and administrative-area data returned by current local source. Governance Node build now passes locally, but deployed API behavior remains unverified.
 5. The Giga collection’s Amajuba label conflicts with its geometry coverage (642 features outside the district). An operator must verify the source export and decide the approved correction before publishing it as an Amajuba-only dataset.
 6. Credential rotation for the previously committed credentials remains an owner action. Credential values are not in the current `mcp.json` or this report; historical Git revisions still contain them and were not rewritten.
-7. Control Centre and Governance Node changes are preserved as local commits `f2e26bac2a732ed55a77d570fdef494ba46a4dbf` and `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d`; they are respectively 2 and 3 commits ahead of the fetched remotes. GitHub reports `push:false` for both, so no push was attempted. An authorized maintainer must push these commits or grant write access. The separate GIS MCP changes are committed and pushed at `e2605f4f4939d62528ae59940731d9501584662b`.
-8. The supplied test environment cannot apply migrations: it lacks Supabase CLI, project-management access token, and a direct database connection string. Its service-role API key is not used as an unverified SQL execution mechanism. Migrations 014/015 are included in the local Control Centre commit but remain unapplied.
-9. No application deployment was triggered. There is no Vercel CLI/token or verified deployment target in the supplied environment, and pushing the app branches is not authorized by current GitHub permissions.
+7. The application commits have been pushed and the GitHub branches are synchronized. Six Vercel status contexts were pending at the last check. Verify their final status and live application behavior before claiming deployment complete.
+8. The supplied notes have no Supabase CLI, project-management access token, or direct database connection string. The service-role key cannot safely apply arbitrary DDL through the REST API. Migrations 014/015 are in the pushed Control Centre commit but remain unapplied/unverified; the configured database schema probe confirms `source_feature_id` is absent.
+9. No Vercel token is configured. Git pushes triggered Vercel checks on the linked projects, but checks remain pending and deployment outcome is not yet verified.
