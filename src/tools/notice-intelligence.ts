@@ -403,10 +403,21 @@ function datasetMetadata(catalog: MapLayersResponse): string[] {
   ].join('\n'));
 }
 
+function metadataValue(value: string | null | undefined): string {
+  return value === undefined
+    ? 'not returned by the Control Centre'
+    : value ?? 'not provided';
+}
+
 async function fetchDistrictFeatures(
   datasetId: string,
   wards: WardFeature[],
-): Promise<{ features: SpatialFeature[]; metadata: FeatureCollection; complete: boolean } | { error: string }> {
+): Promise<{
+  features: SpatialFeature[];
+  metadata: FeatureCollection;
+  complete: boolean;
+  queryFeatureCount: number;
+} | { error: string }> {
   const bounds = coordinateBounds(wards);
   if (!bounds) return { error: 'Could not derive an Amajuba search extent from the published ward geometries.' };
 
@@ -416,26 +427,42 @@ async function fetchDistrictFeatures(
   for (const tile of boundsTiles(bounds)) {
     const bbox = `${tile.west},${tile.south},${tile.east},${tile.north}`;
     let offset = 0;
-    while (true) {
-      const result = await fetchFeatures(datasetId, { bbox, limit: FEATURE_PAGE_SIZE, offset });
+    let tileComplete = false;
+    for (let page = 0; page < 41; page++) {
+      const result = await fetchFeatures(datasetId, {
+        bbox,
+        limit: FEATURE_PAGE_SIZE,
+        offset,
+      });
       if (!result.ok) return { error: `Feature retrieval failed for bbox ${bbox}: ${result.error}` };
       lastMetadata = result.data;
-      if (!result.data.meta.complete) complete = false;
+      if (result.data.meta.datasetId !== datasetId || result.data.meta.offset !== offset) {
+        return { error: 'Control Centre returned a mismatched dataset identity or page offset.' };
+      }
       for (const feature of result.data.features) byId.set(feature.id, feature);
-      if (!result.data.meta.hasMore) break;
+      if (!result.data.meta.hasMore) {
+        tileComplete = result.data.meta.complete;
+        break;
+      }
       if (result.data.meta.nextOffset === null || result.data.meta.nextOffset <= offset) {
-        complete = false;
+        tileComplete = false;
         break;
       }
       offset = result.data.meta.nextOffset;
     }
+    if (!tileComplete) complete = false;
   }
   if (!lastMetadata) return { error: 'No district feature query was made.' };
   const features = [...byId.values()].filter(feature => {
     const { point } = pointForFeature(feature);
     return point !== null && pointInAmajuba(point, wards);
   });
-  return { features, metadata: lastMetadata, complete };
+  return {
+    features,
+    metadata: lastMetadata,
+    complete,
+    queryFeatureCount: byId.size,
+  };
 }
 
 export async function analyseAmajubaSpatialPilot(
@@ -486,7 +513,7 @@ export async function analyseAmajubaSpatialPilot(
     `Dataset: ${layer.label} (${layer.datasetId})`,
     `Source identity: ${layer.sourceName ?? 'not provided'}; institution: ${layer.sourceInstitution ?? 'not provided'}; source ID: ${layer.sourceId ?? 'not provided'}`,
     `Attribution: ${layer.attribution ?? 'not provided'} | Vintage: ${layer.datasetDate ?? 'not provided'}`,
-    'Permission: included by the public endpoint after source and dataset redistribution checks; exact classifications are not exposed.',
+    'Catalogue permission evidence: included by the public endpoint after source and dataset redistribution checks; exact classifications may be available from the feature endpoint.',
     'Authority designation: the existing Control Centre client contract has no explicit authoritative/official flag; verify the custodian and live source metadata before treating a candidate as authoritative.',
     'An exact feature ID confirms which dataset record was retrieved, not that the source is authoritative; name matches remain unverified candidates.'
   );
@@ -513,7 +540,15 @@ export async function analyseAmajubaSpatialPilot(
     attribution: string | null;
     datasetDate: string | null;
     publishedAt: string | null;
-    returned: number;
+    datasetLicenseTerms?: string | null;
+    sourceLicenseTerms?: string | null;
+    datasetProvenance?: string | null;
+    datasetPermission?: string | null;
+    sourcePermission?: string | null;
+    sourceVintage?: string | null;
+    total: number | null;
+    queryFeatureCount: number;
+    districtFeatureCount: number;
   };
   let retrievalComplete = true;
   if (input.featureId) {
@@ -532,7 +567,15 @@ export async function analyseAmajubaSpatialPilot(
       attribution: feature.meta.attribution,
       datasetDate: feature.meta.datasetDate,
       publishedAt: feature.meta.publishedAt,
-      returned: 1,
+      datasetLicenseTerms: feature.meta.datasetLicenseTerms,
+      sourceLicenseTerms: feature.meta.sourceLicenseTerms,
+      datasetProvenance: feature.meta.datasetProvenance,
+      datasetPermission: feature.meta.datasetPermission,
+      sourcePermission: feature.meta.sourcePermission,
+      sourceVintage: feature.meta.sourceVintage,
+      total: null,
+      queryFeatureCount: 1,
+      districtFeatureCount: 1,
     };
   } else {
     const retrieval = await fetchDistrictFeatures(input.datasetId, scopeWards);
@@ -550,7 +593,15 @@ export async function analyseAmajubaSpatialPilot(
       attribution: retrieval.metadata.meta.attribution,
       datasetDate: retrieval.metadata.meta.datasetDate,
       publishedAt: retrieval.metadata.meta.publishedAt,
-      returned: retrieval.metadata.meta.returned,
+      datasetLicenseTerms: retrieval.metadata.meta.datasetLicenseTerms,
+      sourceLicenseTerms: retrieval.metadata.meta.sourceLicenseTerms,
+      datasetProvenance: retrieval.metadata.meta.datasetProvenance,
+      datasetPermission: retrieval.metadata.meta.datasetPermission,
+      sourcePermission: retrieval.metadata.meta.sourcePermission,
+      sourceVintage: retrieval.metadata.meta.sourceVintage,
+      total: retrieval.metadata.meta.total,
+      queryFeatureCount: retrieval.queryFeatureCount,
+      districtFeatureCount: retrieval.features.length,
     };
   }
   const lowerTerm = input.searchTerm?.toLocaleLowerCase();
@@ -570,10 +621,17 @@ export async function analyseAmajubaSpatialPilot(
   lines.push(
     '',
     `── Institutional feature discovery/retrieval (${input.wardNumber === undefined ? 'Amajuba District' : `Ward ${input.wardNumber} (${input.municipalityCode})`}) ──`,
-    `Dataset feature response: ${retrievalMetadata.datasetName}; ${retrievalMetadata.returned} returned.`,
+    input.featureId
+      ? 'Retrieval scope: one exact feature ID; dataset inventory count is not returned by the by-ID endpoint.'
+      : `Dataset inventory: ${retrievalMetadata.total ?? 'not provided'} feature(s); ${retrievalMetadata.queryFeatureCount} unique feature(s) returned by the spatial extent query; ${retrievalMetadata.districtFeatureCount} contained by the selected published ward geometries.`,
     `Feature source ID: ${retrievalMetadata.sourceId ?? layer.sourceId ?? 'not provided'}; source name: ${retrievalMetadata.sourceName ?? layer.sourceName ?? 'not provided'}; institution: ${retrievalMetadata.sourceInstitution ?? layer.sourceInstitution ?? 'not provided'}`,
     `Attribution: ${retrievalMetadata.attribution ?? layer.attribution ?? 'not provided'}; vintage: ${retrievalMetadata.datasetDate ?? layer.datasetDate ?? 'not provided'}; published: ${retrievalMetadata.publishedAt ?? layer.publishedAt ?? 'not provided'}`,
-    `Permission: publicly retrievable through the Control Centre feature endpoint after its permission checks; pagination ${retrievalComplete ? 'completed' : 'incomplete (Control Centre did not provide a progressing nextOffset)'}.`,
+    `Permission: public retrieval passed the Control Centre's source and dataset permission checks; dataset=${metadataValue(retrievalMetadata.datasetPermission)}; source=${metadataValue(retrievalMetadata.sourcePermission)}.`,
+    `Licence terms: dataset=${metadataValue(retrievalMetadata.datasetLicenseTerms)}; source=${metadataValue(retrievalMetadata.sourceLicenseTerms)}.`,
+    `Dataset provenance: ${metadataValue(retrievalMetadata.datasetProvenance)}; source vintage: ${metadataValue(retrievalMetadata.sourceVintage)}.`,
+    input.featureId
+      ? 'Pagination: not applicable to the single exact feature-ID request.'
+      : `Spatial-query pagination: ${retrievalComplete ? 'complete' : 'incomplete; the Control Centre did not confirm every requested page'}.`,
     `Candidate features matching criteria: ${matchingFeatures.length}; included in report: ${candidates.length}${matchingFeatures.length > candidates.length ? ` (limited by maxFeatures=${input.maxFeatures})` : ''}${input.searchTerm ? ` (text search on ${input.nameProperty} is discovery only)` : ''}`,
     ''
   );
@@ -589,7 +647,7 @@ export async function analyseAmajubaSpatialPilot(
       feature.properties['NAME'] ?? 'unnamed';
     const location = pointForFeature(feature);
     featurePoints.set(feature.id, location);
-    lines.push(`${name} — Feature ID: ${feature.id}`);
+    lines.push(`${name} — Feature ID: ${feature.id}; source feature ID: ${feature.sourceFeatureId ?? 'not provided'}`);
     lines.push(`  Match basis: ${input.featureId ? 'exact dataset feature ID' : `candidate text match in ${input.nameProperty}; identity not verified`}`);
     lines.push(`  Geometry: ${JSON.stringify(feature.geometry)}`);
     if (location.point) {
@@ -701,7 +759,7 @@ export async function analyseAmajubaSpatialPilot(
     '',
     '── Provenance and limitations ──',
     'A feature text match is a discovery candidate, not an identity verification. Use dataset ID plus exact feature ID and review source/custodian metadata; never match or approve from name alone.',
-    'Per-layer permission classifications are not exposed by the public map-layers response; exact missing metadata is reported as not provided rather than inferred.',
+    'The public map-layers catalogue omits exact permission classifications. The feature endpoint may provide source/dataset permissions, licence terms and provenance; missing fields are reported as not returned rather than inferred.',
     'All proximity measurements are operator evidence only, not a legal or statutory determination. Any notice-type reference distance returned by the Control Centre is not a universal buffer.'
   );
   return lines.join('\n');

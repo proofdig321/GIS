@@ -18,6 +18,21 @@ import {
   haversineMetres,
 } from '../lib/geodesic.js';
 
+function metadataValue(value: string | null | undefined): string {
+  return value === undefined
+    ? 'not returned by the Control Centre'
+    : value ?? 'not provided';
+}
+
+function featureMetadataLines(meta: FeatureCollection['meta']): string[] {
+  return [
+    `Permissions: dataset=${metadataValue(meta.datasetPermission)}; source=${metadataValue(meta.sourcePermission)}`,
+    `Licence terms: dataset=${metadataValue(meta.datasetLicenseTerms)}; source=${metadataValue(meta.sourceLicenseTerms)}`,
+    `Dataset provenance: ${metadataValue(meta.datasetProvenance)}`,
+    `Source vintage: ${metadataValue(meta.sourceVintage)}`,
+  ];
+}
+
 // ── Tool: get_ward_boundaries ─────────────────────────────────────────────────
 
 export const getWardBoundariesSchema = z.object({
@@ -218,7 +233,8 @@ export async function searchFeaturesByName(
     `Dataset: ${metadata?.datasetName ?? input.datasetId} (${input.datasetId})`,
     `Source: ${metadata?.sourceName ?? 'unknown'} (${metadata?.sourceId ?? 'source ID not provided'}); institution: ${metadata?.sourceInstitution ?? 'not provided'}`,
     `Attribution: ${metadata?.attribution ?? 'not provided'}; vintage: ${metadata?.datasetDate ?? 'not provided'}; published: ${metadata?.publishedAt ?? 'not provided'}`,
-    'Permission: features were returned by the public Control Centre endpoint after source and dataset redistribution checks; exact classifications are not exposed.',
+    ...(metadata ? featureMetadataLines(metadata) : []),
+    'Public access is subject to both source and dataset redistribution checks; classifications are shown above when returned by the Control Centre.',
     `Inventory: ${features.length} of ${metadata?.total ?? 'unknown'} dataset feature(s) retrieved; pagination ${complete ? 'complete' : 'incomplete'}.`,
     `Name matches for "${input.searchTerm}" in "${input.nameProperty}": ${matched.length}.`,
     nextOffset < matched.length
@@ -237,6 +253,7 @@ export async function searchFeaturesByName(
   lines.push('');
   for (const f of selected) {
     lines.push(`Feature ID: ${f.id}`);
+    lines.push(`  Source feature ID: ${f.sourceFeatureId ?? 'not provided'}`);
     lines.push(`  ${input.nameProperty}: ${f.properties[input.nameProperty]}`);
     const pt = pointFromGeoJSON(f.geometry) ?? centroidFromPolygon(f.geometry);
     if (pt) {
@@ -304,12 +321,15 @@ export async function getFeaturesNearPoint(
   const lines: string[] = [
     `Features within ${input.radiusMeters}m of (lat=${input.lat}, lng=${input.lng})`,
     `Dataset: ${meta.datasetName} | Attribution: ${meta.attribution ?? 'unknown'}`,
+    `Source: ${meta.sourceName ?? 'unknown'} (${meta.sourceId ?? 'source ID not provided'}); institution: ${meta.sourceInstitution ?? 'not provided'}`,
+    ...featureMetadataLines(meta),
     `Found: ${features.length}${meta.hasMore ? ' (more available — increase limit or use offset)' : ''}`,
     '',
   ];
 
   for (const { f, dist, pt } of withDist) {
     lines.push(`Feature ID: ${f.id}`);
+    lines.push(`  Source feature ID: ${f.sourceFeatureId ?? 'not provided'}`);
     if (dist !== null) lines.push(`  Distance: ${Math.round(dist)}m`);
     if (pt) lines.push(`  Location (lat, lng): ${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}`);
     const props = Object.entries(f.properties)

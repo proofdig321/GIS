@@ -28,6 +28,19 @@ cp .env.example .env
 # INTELLIGENCE_API_KEY      — for Governance Node intelligence API
 ```
 
+`mcp.json` contains only non-secret MCP connection settings. Do not copy tokens,
+API keys, or other credentials into that tracked file. The MCP loads the ignored
+workspace `.env` when present; production hosts must inject secrets through
+their protected environment configuration.
+
+**Credential rotation required:** `SANITY_READ_TOKEN`, `INTELLIGENCE_API_KEY`,
+and `UMKHANDLU_OPERATOR_TOKEN` were previously committed in `mcp.json`. Removing
+them from the current file does not remove historical Git copies. An authorized
+credential owner must revoke and replace each credential, update protected
+runtime configuration, and verify the replacement before authenticated use.
+Do not paste credential values into chat or commit them. Shared Git history is
+not rewritten as part of this remediation.
+
 Credentials required per tool group:
 
 | Tool group | Auth required |
@@ -50,7 +63,9 @@ Copy `mcp.json` to `~/.aws/amazonq/mcp.json` (or merge into existing):
 cp /workspaces/GIS/mcp.json ~/.aws/amazonq/mcp.json
 ```
 
-Add sensitive tokens to the `env` block in `~/.aws/amazonq/mcp.json` — never commit them.
+Keep sensitive tokens out of the copied `mcp.json`. Configure them in the
+ignored `/workspaces/GIS/.env` for this workspace or inject them through the
+MCP host's protected environment configuration.
 
 ### 4. Run tests
 
@@ -58,7 +73,9 @@ Add sensitive tokens to the `env` block in `~/.aws/amazonq/mcp.json` — never c
 npm test
 ```
 
-98 tests across 7 suites: geodesic math, permission model, proximity thresholds, district pilot workflow, Sanity query safety, Control Centre timeout handling and live proximity-configuration sourcing.
+The test suite covers geodesic math, permission rules, proximity references,
+the district pilot workflow, Sanity query safety, Control Centre timeout
+handling, pagination, and spatial discovery.
 
 ---
 

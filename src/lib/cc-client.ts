@@ -76,6 +76,7 @@ export interface WardCollection {
 export interface SpatialFeature {
   type: 'Feature';
   id: string;
+  sourceFeatureId?: string | null;
   geometry: { type: string; coordinates?: unknown; geometries?: unknown };
   properties: Record<string, unknown>;
 }
@@ -92,6 +93,12 @@ export interface FeatureCollection {
     sourceInstitution: string | null;
     datasetDate: string | null;
     publishedAt: string | null;
+    datasetLicenseTerms?: string | null;
+    sourceLicenseTerms?: string | null;
+    datasetProvenance?: string | null;
+    datasetPermission?: string | null;
+    sourcePermission?: string | null;
+    sourceVintage?: string | null;
     total: number | null;
     offset: number;
     limit: number;
@@ -148,8 +155,15 @@ export interface PublishedSpatialFeature extends SpatialFeature {
     sourceName: string | null;
     sourceInstitution: string | null;
     attribution: string | null;
+    datasetLicenseTerms?: string | null;
+    sourceLicenseTerms?: string | null;
+    datasetProvenance?: string | null;
+    datasetPermission?: string | null;
+    sourcePermission?: string | null;
+    sourceVintage?: string | null;
     datasetDate: string | null;
     publishedAt: string | null;
+    sourceFeatureId?: string | null;
   };
 }
 
