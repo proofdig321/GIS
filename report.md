@@ -2,6 +2,19 @@
 
 **Umkhandlu GIS / GratisGIS integration update — 2026-11-15**
 
+## Governance Node build-failure fix — 2026-11-16
+
+The user supplied the Vercel failure log. The build compiled, then TypeScript failed in generated `.sanity/sanity.types.ts` because it augments `@sanity/client`, but the package was only transitive and pnpm did not make it resolvable from the app root. Added `@sanity/client` as a direct dependency with a compatible 6.x range and updated both npm and pnpm lockfile root metadata without unrelated lockfile refreshes.
+
+Verification:
+
+- Clean pnpm 10.28 frozen-lockfile install passed.
+- Governance Node Vercel build (`pnpm run vercel-build`) passed, including type checking and static generation.
+- Governance Node `tsc --noEmit` passed; all **35 tests** passed.
+- `npm ci --dry-run` remains invalid because the pre-existing npm lockfile is missing `@playwright/test` and its transitive Playwright packages. Vercel selects pnpm and the frozen pnpm lockfile passes. No unrelated npm dependency-tree refresh was included.
+
+Pushed to the original Governance Node `trunk` as `23fab691da19539d2c9b6a17200d23f37716902b`. Vercel has started new builds for both linked Governance Node projects; both were pending at the last status check. The existing public health endpoint returns HTTP 200 / healthy.
+
 ## Access, migration, and deployment update — 2026-11-15 04:45 UTC
 
 The user clarified that a GitHub PAT was included as a note in `/workspaces/GIS/env.md`, not as an environment assignment. The PAT was read in memory only, never printed, and used for authenticated permission checks and pushes. GitHub identified its owner as `prooftv`, with `push=true` and `admin=true` on both original application repositories.
@@ -44,7 +57,7 @@ The supplied test configuration was used for **read-only** database verification
 
 - Control Centre coverage tests: **5 passed**; GratisGIS adapter tests: **2 passed**; permission tests: **30 passed**; spatial API tests: **9 passed**.
 - Control Centre production build passed. Its focused application `tsc --noEmit` still reports the pre-existing duplicate global `test`/`expect` declarations in `permission-enforcement.test.ts`; no coverage implementation errors remained, and the Next production build’s TypeScript check passed.
-- Governance Node: full test suite **35 passed**; typecheck passed; production build now passed using allowlisted test environment variables.
+- Governance Node: full test suite **35 passed**; typecheck passed; production `vercel-build` passed with a clean pnpm install after adding `@sanity/client` as a direct dependency. Latest Vercel checks for the fix were pending at report time.
 - GIS MCP: typecheck, build, and all **150 tests** passed.
 - `git diff --check` passes in all three repositories.
 
@@ -54,7 +67,7 @@ The GIS MCP and both application branches are pushed. Control Centre Vercel depl
 
 ## Executive summary
 
-Continued from the existing three-repository work without resetting or replacing it. Protected the supplied `.env.test`, used only selected values for read-only connectivity/build checks, verified the deployed MCP and Control Centre APIs, and improved the MCP’s feature metadata and Amajuba inventory reporting.
+Continued from the existing three-repository work without resetting or replacing it. Protected the supplied notes, used authorized credentials with their respective services, verified the deployed MCP and Control Centre APIs, improved MCP metadata and Amajuba inventory reporting, and repaired the Governance Node’s Vercel build failure.
 
 The live checks establish that the Giga/UNICEF/ITU catalogue entry reports 834 features and that all 834 can be paginated from the public Control Centre feature API. Against the published Municipal Demarcation Board (MDB) Amajuba DC25 polygon and the union of its 55 published 2026 wards, 192 school points are inside and 642 are outside. The previously reported 106 candidates are reproduced by searching the in-district features’ `name` for `primary`; this is a text-search result, not the dataset inventory or verified school identity.
 
@@ -66,11 +79,11 @@ Remote refs were fetched before recording this status. Existing work was preserv
 
 | Repository | Branch / relevant commit | Upstream divergence | Worktree |
 |---|---|---:|---|
-| GIS MCP (`proofdig321/GIS`) | `main` / latest report commit (see this report commit) | 0 ahead, 0 behind | Changes pushed; `env.md` untracked |
+| GIS MCP (`proofdig321/GIS`) | `main` / current report update | 0 ahead, 0 behind | Changes pushed; `env.md` ignored |
 | Control Centre (`prooftv/unami-platform-core`) | `main` / `f2e26bac2a732ed55a77d570fdef494ba46a4dbf` | 0 ahead, 0 behind | Pushed; clean |
-| Governance Node (`prooftv/Umkhandlu`) | `trunk` / `d6c10dc0ca1575f87733a6b4ada7ee434ed6c02d` | 0 ahead, 0 behind | Pushed; clean |
+| Governance Node (`prooftv/Umkhandlu`) | `trunk` / `23fab691da19539d2c9b6a17200d23f37716902b` | 0 ahead, 0 behind | Build fix pushed; clean |
 
-GIS MCP code changes are committed and pushed at `e2605f4f4939d62528ae59940731d9501584662b`; subsequent report commits are recorded on `main`. The application commits listed above are pushed to their original remotes. Control Centre Vercel checks succeeded; both Governance Node Vercel checks failed. Production Supabase migrations 014/015 were applied and verified.
+GIS MCP code changes are committed and pushed at `e2605f4f4939d62528ae59940731d9501584662b`; subsequent report commits are recorded on `main`. Application commits are pushed to their original remotes. Control Centre Vercel checks succeeded. Governance Node’s initial deployments failed on generated Sanity type module resolution; the direct dependency fix is pushed and the matching local pnpm production build passes. Vercel is rebuilding both linked projects. Production Supabase migrations 014/015 were applied and verified.
 
 ## Credential notes and environment handling
 
